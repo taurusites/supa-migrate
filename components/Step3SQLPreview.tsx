@@ -31,12 +31,12 @@ export default function Step3SQLPreview({
     setLoading(true);
     setError(null);
     try {
-      const txt = await generateMigrationSQL(
+      const generated = await generateMigrationSQL(
         credentials.url,
         credentials.key,
         selection
       );
-      setSQL(txt);
+      setSQL(generated);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to generate SQL");

@@ -13,7 +13,7 @@ import { SchemaInfo, TableSelection } from "../types";
 
 interface Props {
   selection: TableSelection[];
-  setSelection: (s: TableSelection[]) => void;
+  setSelection: (sel: TableSelection[]) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -29,7 +29,6 @@ export default function Step2Select({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // fetch once credentials exist
   useEffect(() => {
     if (!credentials) return;
 
@@ -39,6 +38,8 @@ export default function Step2Select({
     listSchemasAndTables(credentials.url, credentials.key)
       .then((data) => {
         setSchemas(data);
+
+        // initialize selection if empty
         if (selection.length === 0) {
           const init: TableSelection[] = [];
           data.forEach((s) =>
@@ -56,28 +57,26 @@ export default function Step2Select({
       .finally(() => setLoading(false));
   }, [credentials]);
 
-  if (!credentials)
+  if (!credentials) {
     return <Alert severity="error">Missing Supabase credentials</Alert>;
+  }
   if (loading) return <Loading />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
+  // Toggle a table by building a fresh array
   const toggle = (schema: string, table: string) => {
-    setSelection((prev) =>
-      prev.map((row) =>
-        row.schema === schema && row.table === table
-          ? { ...row, selected: !row.selected }
-          : row
-      )
+    const updated = selection.map((row) =>
+      row.schema === schema && row.table === table
+        ? { ...row, selected: !row.selected }
+        : row
     );
+    setSelection(updated);
   };
 
   return (
     <Box className="space-y-6">
       {schemas.map((s) => (
-        <Box
-          key={s.schema}
-          className="border rounded-lg p-4"
-        >
+        <Box key={s.schema} className="border rounded-lg p-4">
           <h3 className="font-semibold mb-2">{s.schema}</h3>
           <Box className="grid grid-cols-2 gap-2">
             {s.tables.map((t) => {
