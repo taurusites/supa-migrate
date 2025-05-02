@@ -9,31 +9,31 @@ export default async function handler(
   try {
     const url = req.headers["x-sb-url"] as string;
     const key = req.headers["x-sb-key"] as string;
-    if (!url || !key) throw new Error("Missing Supabase URL/key");
+    if (!url || !key) throw new Error("Missing Supabase URL/key headers");
 
-    const supa = createClient(url, key, { global: { headers: { Accept: "application/json" } } });
+    const supa = createClient(url, key, {
+      global: { headers: { Accept: "application/json" } }
+    });
 
-    // 1) list schemas
-    const { data: scRows, error: scErr } = await supa.rpc<{ schema_name: string }[]>(
-      "pg_list_schemas"
-    );
-    if (scErr) throw scErr;
-    const schemas = scRows.map((r) => r.schema_name);
+    // 1) List schemas
+    const listSchemas = await supa.rpc("pg_list_schemas");
+    if (listSchemas.error) throw listSchemas.error;
+    const scRows = listSchemas.data as any[] | null;
+    const schemas = scRows?.map((r) => r.schema_name as string) || [];
 
-    // 2) list tables per schema
+    // 2) List tables per schema
     const out: SchemaInfo[] = [];
     for (const schema of schemas) {
-      const { data: tbRows, error: tbErr } = await supa.rpc<{ table_name: string }[]>(
-        "pg_list_tables",
-        { schemaname: schema }
-      );
-      if (tbErr) throw tbErr;
-      out.push({ schema, tables: tbRows.map((r) => r.table_name) });
+      const listTables = await supa.rpc("pg_list_tables", { schemaname: schema });
+      if (listTables.error) throw listTables.error;
+      const tbRows = listTables.data as any[] | null;
+      const tables = tbRows?.map((r) => r.table_name as string) || [];
+      out.push({ schema, tables });
     }
 
-    res.status(200).json(out);
+    return res.status(200).json(out);
   } catch (e: any) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+    console.error("list-schemas-tables error", e);
+    return res.status(500).json({ error: e.message });
   }
 }
