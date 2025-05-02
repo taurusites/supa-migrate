@@ -9,21 +9,24 @@ interface Props {
 
 export default function SQLViewer({ sql, onBack }: Props) {
   const handleCopy = () => {
-    if (typeof navigator !== "undefined")
-      navigator.clipboard.writeText(sql);
+    if (navigator) navigator.clipboard.writeText(sql);
   };
   const handleDownload = () => download(sql, "migration.sql", "text/sql");
 
   return (
     <Box>
-      <Paper variant="outlined" className="p-4 mb-4 overflow-auto max-h-96">
+      <Paper className="p-4 mb-4 overflow-auto max-h-96" variant="outlined">
         <pre className="whitespace-pre-wrap">{sql}</pre>
       </Paper>
       <Box className="flex justify-between">
         <Button onClick={onBack}>Back</Button>
         <Box>
-          <Button onClick={handleCopy} className="mr-2">Copy</Button>
-          <Button variant="contained" onClick={handleDownload}>Download</Button>
+          <Button onClick={handleCopy} className="mr-2">
+            Copy
+          </Button>
+          <Button variant="contained" onClick={handleDownload}>
+            Download
+          </Button>
         </Box>
       </Box>
     </Box>

@@ -5,17 +5,11 @@ interface Value {
   credentials: Credentials | null;
   setCredentials: (c: Credentials) => void;
 }
-const Ctx = createContext<Value>({
-  credentials: null,
-  setCredentials: () => {}
-});
-export const useSupabaseCredentials = () => useContext(Ctx);
+const Ctx = createContext<Value>({ credentials: null, setCredentials: () => {} });
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [credentials, setCredentials] = useState<Credentials | null>(null);
-  return (
-    <Ctx.Provider value={{ credentials, setCredentials }}>
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={{ credentials, setCredentials }}>{children}</Ctx.Provider>;
 }
+
+export const useSupabaseCredentials = () => useContext(Ctx);

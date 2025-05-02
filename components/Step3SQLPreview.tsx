@@ -16,19 +16,20 @@ interface Props {
 export default function Step3SQLPreview({ selection, sql, setSQL, onBack }: Props) {
   const { credentials } = useSupabaseCredentials();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string|null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = async () => {
-    if (!credentials) {
-      setError("Missing credentials");
-      return;
-    }
-    setLoading(true);
+  const gen = async () => {
     setError(null);
+    if (!credentials) return setError("Missing credentials");
+    setLoading(true);
     try {
-      const txt = await generateMigrationSQL(credentials.url, credentials.key, selection);
+      const txt = await generateMigrationSQL(
+        credentials.url,
+        credentials.key,
+        selection
+      );
       setSQL(txt);
-    } catch (e:any) {
+    } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
@@ -40,7 +41,7 @@ export default function Step3SQLPreview({ selection, sql, setSQL, onBack }: Prop
       {error && <Alert severity="error">{error}</Alert>}
       {!sql && (
         <Box className="flex justify-end">
-          <Button variant="contained" onClick={handleGenerate} disabled={loading}>
+          <Button variant="contained" onClick={gen} disabled={loading}>
             {loading ? "Generating..." : "Generate SQL"}
           </Button>
         </Box>
