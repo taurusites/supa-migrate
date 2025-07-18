@@ -3,40 +3,47 @@ import { Stepper, Step, StepLabel, Box } from "@mui/material";
 import Step1Credentials from "./Step1Credentials";
 import Step2Select from "./Step2Select";
 import Step3SQLPreview from "./Step3SQLPreview";
-import { TableSelection } from "../types";
+import { Selection } from "../types";
 
-const steps = ["Credentials", "Select Tables", "Preview SQL"];
+const steps = ["Credentials", "Select Items", "Preview SQL"];
 
 export default function Wizard() {
-  const [active, setActive] = useState(0);
-  const [selection, setSelection] = useState<TableSelection[]>([]);
-  const [sql, setSQL] = useState("");
+  const [activeStep, setActiveStep] = useState(0);
+
+  // now track a unified list of Selection
+  const [selections, setSelections] = useState<Selection[]>([]);
+  const [sql, setSQL] = useState<string>("");
 
   return (
     <Box>
-      <Stepper activeStep={active} alternativeLabel>
+      <Stepper activeStep={activeStep} alternativeLabel>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
+
       <Box className="mt-8">
-        {active === 0 && <Step1Credentials onNext={() => setActive(1)} />}
-        {active === 1 && (
+        {activeStep === 0 && (
+          <Step1Credentials onNext={() => setActiveStep(1)} />
+        )}
+
+        {activeStep === 1 && (
           <Step2Select
-            selection={selection}
-            setSelection={setSelection}
-            onNext={() => setActive(2)}
-            onBack={() => setActive(0)}
+            selections={selections}
+            setSelections={setSelections}
+            onNext={() => setActiveStep(2)}
+            onBack={() => setActiveStep(0)}
           />
         )}
-        {active === 2 && (
+
+        {activeStep === 2 && (
           <Step3SQLPreview
-            selection={selection}
+            selections={selections}
             sql={sql}
             setSQL={setSQL}
-            onBack={() => setActive(1)}
+            onBack={() => setActiveStep(1)}
           />
         )}
       </Box>

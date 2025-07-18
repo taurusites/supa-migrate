@@ -105,3 +105,80 @@ CREATE OR REPLACE FUNCTION public.pg_list_foreign_keys()
     WHERE c.contype='f'
     GROUP BY nsp.nspname,c.conname,rel.relname,fnsp.nspname,frel.relname;
   $$ LANGUAGE sql STABLE;
+
+  -- 8) List all user functions
+DROP FUNCTION IF EXISTS public.pg_list_functions();
+CREATE OR REPLACE FUNCTION public.pg_list_functions()
+  RETURNS TABLE(function_schema text, function_name text) AS $$
+    SELECT n.nspname AS function_schema,
+           p.proname AS function_name
+    FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+      AND p.prokind = 'f';
+  $$ LANGUAGE sql STABLE;
+
+-- 9) Get function definition
+DROP FUNCTION IF EXISTS public.pg_get_functiondef(text,text);
+CREATE OR REPLACE FUNCTION public.pg_get_functiondef(
+  function_schema text,
+  function_name   text
+)
+  RETURNS TABLE(def text) AS $$
+    SELECT pg_get_functiondef(p.oid) AS def
+    FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = function_schema
+      AND p.proname = function_name
+    LIMIT 1;
+  $$ LANGUAGE sql STABLE;
+
+-- 10) List all triggers
+DROP FUNCTION IF EXISTS public.pg_list_triggers();
+CREATE OR REPLACE FUNCTION public.pg_list_triggers()
+  RETURNS TABLE(
+    trigger_schema           text,
+    table_name               text,
+    trigger_name             text
+  ) AS $$
+    SELECT
+      n.nspname    AS trigger_schema,
+      c.relname    AS table_name,
+      t.tgname     AS trigger_name
+    FROM pg_trigger t
+    JOIN pg_class c     ON t.tgrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE NOT t.tgisinternal;
+  $$ LANGUAGE sql STABLE;
+
+-- 11) Get trigger definition
+DROP FUNCTION IF EXISTS public.pg_get_triggerdef(text,text,text);
+CREATE OR REPLACE FUNCTION public.pg_get_triggerdef(
+  trigger_schema text,
+  table_name     text,
+  trigger_name   text
+)
+  RETURNS TABLE(def text) AS $$
+    SELECT pg_get_triggerdef(t.oid) AS def
+    FROM pg_trigger t
+    JOIN pg_class c     ON t.tgrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = trigger_schema
+      AND c.relname = table_name
+      AND t.tgname  = trigger_name
+    LIMIT 1;
+  $$ LANGUAGE sql STABLE;
+
+
+  -- NEW: list indexes for one schema via RPC (avoids pg_catalog override)
+DROP FUNCTION IF EXISTS public.pg_list_schema_indexes(text);
+CREATE OR REPLACE FUNCTION public.pg_list_schema_indexes(schemaname text)
+  RETURNS TABLE(
+    tablename text,
+    indexname text,
+    indexdef  text
+  ) AS $$
+    SELECT tablename, indexname, indexdef
+    FROM pg_indexes
+    WHERE schemaname = schemaname;
+  $$ LANGUAGE sql STABLE;
