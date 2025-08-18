@@ -2,7 +2,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
-import { TableSelection } from "../../types";
+import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection } from "../../types";
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,10 +19,21 @@ export default async function handler(
       global: { headers: { Accept: "application/json" } }
     });
 
-    // 3) Parse selected tables
-    const { selections } = req.body as { selections: TableSelection[] };
+    // 3) Parse selections
+    const { selections, functionSelections = [], typeSelections = [], triggerSelections = [] } = req.body as { 
+      selections: TableSelection[];
+      functionSelections?: FunctionSelection[];
+      typeSelections?: TypeSelection[];
+      triggerSelections?: TriggerSelection[];
+    };
     const picked = selections.filter((s) => s.selected);
-    if (!picked.length) throw new Error("No tables selected");
+    const pickedFunctions = functionSelections.filter((s) => s.selected);
+    const pickedTypes = typeSelections.filter((s) => s.selected);
+    const pickedTriggers = triggerSelections.filter((s) => s.selected);
+    
+    if (!picked.length && !pickedFunctions.length && !pickedTypes.length && !pickedTriggers.length) {
+      throw new Error("No tables, functions, types, or triggers selected");
+    }
 
     // Build sets for filtering
     const tableSet  = new Set(picked.map((s) => `${s.schema}.${s.table}`));
@@ -62,6 +73,75 @@ export default async function handler(
         }
         sql += "\n";
       }
+    }
+
+    // ─── STEP 1.5: USER-DEFINED TYPES ──────────────────────────────────
+    if (pickedTypes.length) {
+      sql += "-- USER-DEFINED TYPES\n";
+      for (const { schema, type } of pickedTypes) {
+        try {
+          const r = await rpc.rpc("pg_get_type_def", {
+            schemaname: schema,
+            typename: type
+          });
+          if (r.error) throw r.error;
+          const typeDef = r.data as Array<{ definition: string }> | null;
+          if (typeDef && typeDef.length > 0) {
+            sql += `${typeDef[0].definition};\n\n`;
+          } else {
+            sql += `-- Could not retrieve definition for type ${schema}.${type}\n`;
+          }
+        } catch (err) {
+          sql += `-- Error retrieving definition for type ${schema}.${type}: ${err}\n`;
+        }
+      }
+      sql += "\n";
+    }
+
+    // ─── STEP 1.6: USER-DEFINED FUNCTIONS ──────────────────────────────
+    if (pickedFunctions.length) {
+      sql += "-- USER-DEFINED FUNCTIONS\n";
+      for (const { schema, function: funcName } of pickedFunctions) {
+        try {
+          const r = await rpc.rpc("pg_get_function_def", {
+            schemaname: schema,
+            functionname: funcName
+          });
+          if (r.error) throw r.error;
+          const funcDef = r.data as Array<{ definition: string }> | null;
+          if (funcDef && funcDef.length > 0) {
+            sql += `${funcDef[0].definition};\n\n`;
+          } else {
+            sql += `-- Could not retrieve definition for ${schema}.${funcName}\n`;
+          }
+        } catch (err) {
+          sql += `-- Error retrieving definition for ${schema}.${funcName}: ${err}\n`;
+        }
+      }
+      sql += "\n";
+    }
+
+    // ─── STEP 1.7: TRIGGERS ─────────────────────────────────────────────
+    if (pickedTriggers.length) {
+      sql += "-- TRIGGERS\n";
+      for (const { schema, trigger, table } of pickedTriggers) {
+        try {
+          const r = await rpc.rpc("pg_get_trigger_def", {
+            schemaname: schema,
+            triggername: trigger
+          });
+          if (r.error) throw r.error;
+          const triggerDef = r.data as Array<{ definition: string }> | null;
+          if (triggerDef && triggerDef.length > 0) {
+            sql += `${triggerDef[0].definition};\n\n`;
+          } else {
+            sql += `-- Could not retrieve definition for trigger ${schema}.${trigger} on ${table}\n`;
+          }
+        } catch (err) {
+          sql += `-- Error retrieving definition for trigger ${schema}.${trigger}: ${err}\n`;
+        }
+      }
+      sql += "\n";
     }
 
     // ─── STEP 2: DDL + DATA FOR EACH TABLE ───────────────────────────

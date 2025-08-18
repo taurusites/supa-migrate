@@ -6,10 +6,13 @@ interface Props {
   credentials: any;
   schemas: any[];
   selection: any[];
+  functionSelection: any[];
+  typeSelection: any[];
+  triggerSelection: any[];
   sql: string;
 }
 
-export default function DebugPanel({ credentials, schemas, selection, sql }: Props) {
+export default function DebugPanel({ credentials, schemas, selection, functionSelection, typeSelection, triggerSelection, sql }: Props) {
   if (process.env.NODE_ENV !== 'development') return null;
 
   return (
@@ -41,10 +44,37 @@ export default function DebugPanel({ credentials, schemas, selection, sql }: Pro
 
         <Accordion>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography>Selection ({selection.filter(s => s.selected).length} selected)</Typography>
+            <Typography>Table Selection ({selection.filter(s => s.selected).length} selected)</Typography>
           </AccordionSummary>
           <AccordionDetails>
             <pre>{JSON.stringify(selection.filter(s => s.selected), null, 2)}</pre>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Function Selection ({functionSelection.filter(s => s.selected).length} selected)</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <pre>{JSON.stringify(functionSelection.filter(s => s.selected), null, 2)}</pre>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Type Selection ({typeSelection.filter(s => s.selected).length} selected)</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <pre>{JSON.stringify(typeSelection.filter(s => s.selected), null, 2)}</pre>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Trigger Selection ({triggerSelection.filter(s => s.selected).length} selected)</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <pre>{JSON.stringify(triggerSelection.filter(s => s.selected), null, 2)}</pre>
           </AccordionDetails>
         </Accordion>
 

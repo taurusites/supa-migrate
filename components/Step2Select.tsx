@@ -27,15 +27,14 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
       .then((data) => {
         setSchemas(data);
         onSchemasLoaded?.(data);
-        if (!selection.length) {
-          const init: TableSelection[] = [];
-          data.forEach((s) =>
-            s.tables.forEach((t) =>
-              init.push({ schema: s.schema, table: t, selected: false })
-            )
-          );
-          setSelection(init);
-        }
+        // Always reinitialize selection to ensure all start unchecked
+        const init: TableSelection[] = [];
+        data.forEach((s) =>
+          s.tables.forEach((t) =>
+            init.push({ schema: s.schema, table: t, selected: false })
+          )
+        );
+        setSelection(init);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -54,30 +53,52 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
     setSelection(updated);
   };
 
+  const toggleAllTables = (schema: string, checked: boolean) => {
+    const updated = selection.map((r) =>
+      r.schema === schema ? { ...r, selected: checked } : r
+    );
+    setSelection(updated);
+  };
+
   return (
     <Box className="space-y-6">
-      {schemas.map((s) => (
-        <Box key={s.schema} className="border rounded-lg p-4">
-          <h3 className="font-semibold mb-2">{s.schema}</h3>
-          <Box className="grid grid-cols-2 gap-2">
-            {s.tables.map((t) => {
-              const sel = selection.find((x) => x.schema === s.schema && x.table === t);
-              return (
-                <FormControlLabel
-                  key={`${s.schema}.${t}`}
-                  control={
-                    <Checkbox
-                      checked={sel?.selected || false}
-                      onChange={() => toggle(s.schema, t)}
-                    />
-                  }
-                  label={t}
-                />
-              );
-            })}
+      {schemas.map((s) => {
+        const schemaTables = selection.filter(sel => sel.schema === s.schema);
+        return (
+          <Box key={s.schema} className="border rounded-lg p-4">
+            <Box className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold">{s.schema}</h3>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={schemaTables.every(t => t.selected)}
+                    indeterminate={schemaTables.some(t => t.selected) && !schemaTables.every(t => t.selected)}
+                    onChange={(e) => toggleAllTables(s.schema, e.target.checked)}
+                  />
+                }
+                label="Select All"
+              />
+            </Box>
+            <Box className="grid grid-cols-2 gap-2">
+              {s.tables.map((t) => {
+                const sel = selection.find((x) => x.schema === s.schema && x.table === t);
+                return (
+                  <FormControlLabel
+                    key={`${s.schema}.${t}`}
+                    control={
+                      <Checkbox
+                        checked={sel?.selected || false}
+                        onChange={() => toggle(s.schema, t)}
+                      />
+                    }
+                    label={t}
+                  />
+                );
+              })}
+            </Box>
           </Box>
-        </Box>
-      ))}
+        );
+      })}
       <Box className="flex justify-between pt-4">
         <Button onClick={onBack}>Back</Button>
         <Button
