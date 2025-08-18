@@ -10,9 +10,10 @@ interface Props {
   setSelection: (s: TableSelection[]) => void;
   onNext: () => void;
   onBack: () => void;
+  onSchemasLoaded?: (schemas: SchemaInfo[]) => void;
 }
 
-export default function Step2Select({ selection, setSelection, onNext, onBack }: Props) {
+export default function Step2Select({ selection, setSelection, onNext, onBack, onSchemasLoaded }: Props) {
   const { credentials } = useSupabaseCredentials();
   const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,6 +26,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack }:
     listSchemasAndTables(credentials.url, credentials.key)
       .then((data) => {
         setSchemas(data);
+        onSchemasLoaded?.(data);
         if (!selection.length) {
           const init: TableSelection[] = [];
           data.forEach((s) =>

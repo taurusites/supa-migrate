@@ -3,13 +3,17 @@ import { Stepper, Step, StepLabel, Box } from "@mui/material";
 import Step1Credentials from "./Step1Credentials";
 import Step2Select from "./Step2Select";
 import Step3SQLPreview from "./Step3SQLPreview";
+import DebugPanel from "./DebugPanel";
+import { useSupabaseCredentials } from "../context/SupabaseContext";
 import { TableSelection } from "../types";
 
 const steps = ["Credentials", "Select Tables", "Preview SQL"];
 
 export default function Wizard() {
+  const { credentials } = useSupabaseCredentials();
   const [active, setActive] = useState(0);
   const [selection, setSelection] = useState<TableSelection[]>([]);
+  const [schemas, setSchemas] = useState<any[]>([]);
   const [sql, setSQL] = useState("");
 
   return (
@@ -29,6 +33,7 @@ export default function Wizard() {
             setSelection={setSelection}
             onNext={() => setActive(2)}
             onBack={() => setActive(0)}
+            onSchemasLoaded={setSchemas}
           />
         )}
         {active === 2 && (
@@ -40,6 +45,13 @@ export default function Wizard() {
           />
         )}
       </Box>
+      
+      <DebugPanel 
+        credentials={credentials}
+        schemas={schemas}
+        selection={selection}
+        sql={sql}
+      />
     </Box>
   );
 }
