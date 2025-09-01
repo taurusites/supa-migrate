@@ -27,7 +27,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
   const [details, setDetails] = useState<SchemaDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showBuiltInSchemas, setShowBuiltInSchemas] = useState(false);
+  const [showBuiltInSchemas, setShowBuiltInSchemas] = useState(true);
 
   useEffect(() => {
     if (!credentials) return;
@@ -74,7 +74,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
     <Box className="space-y-6">
       <Box className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
         <Typography variant="body2" color="textSecondary">
-          By default, built-in Supabase schemas (auth, storage, etc.) are hidden as they're typically not migrated.
+          Built-in Supabase schemas (auth, storage, etc.) are shown but typically not migrated. Toggle to hide them.
         </Typography>
         <FormControlLabel
           control={
