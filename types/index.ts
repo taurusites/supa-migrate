@@ -1,3 +1,5 @@
+// types/index.ts
+
 export interface Credentials {
   url: string;
   key: string;

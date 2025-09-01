@@ -2,12 +2,21 @@ import React, { useEffect, useState } from "react";
 import { Box, Button, Checkbox, FormControlLabel, Alert, Switch, Typography } from "@mui/material";
 import Loading from "./Loading";
 import { useSupabaseCredentials } from "../context/SupabaseContext";
-import { listSchemasAndTables } from "../services/supabaseService";
-import { SchemaInfo, TableSelection } from "../types";
+import { listSchemaDetails } from "../services/supabaseService";
+import { SchemaDetail, Selection } from "../types";
 
-interface Props {
-  selection: TableSelection[];
-  setSelection: (s: TableSelection[]) => void;
+const LABELS: Record<string, string> = {
+  table:      "Tables",
+  enum:       "Enums",
+  function:   "Functions",
+  trigger:    "Triggers",
+  index:      "Indexes",
+  foreignKey: "Foreign Keys",
+};
+
+interface Step2SelectProps {
+  selections: Selection[];
+  setSelections: (s: Selection[]) => void;
   onNext: () => void;
   onBack: () => void;
   onSchemasLoaded?: (schemas: SchemaInfo[]) => void;
@@ -15,7 +24,7 @@ interface Props {
 
 export default function Step2Select({ selection, setSelection, onNext, onBack, onSchemasLoaded }: Props) {
   const { credentials } = useSupabaseCredentials();
-  const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
+  const [details, setDetails] = useState<SchemaDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBuiltInSchemas, setShowBuiltInSchemas] = useState(false);
@@ -127,7 +136,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
         <Button
           variant="contained"
           onClick={onNext}
-          disabled={!selection.some((s) => s.selected)}
+          disabled={!tablesSelected.some((s) => s.selected)}
         >
           Next
         </Button>

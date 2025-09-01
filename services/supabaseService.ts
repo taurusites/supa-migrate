@@ -1,9 +1,7 @@
 import { SchemaInfo, TableSelection, FunctionSelection, TypeSelection, TriggerSelection } from "../types";
 
-/**
- * Fetch schemas & tables via our Next.js API.
- */
-export async function listSchemasAndTables(
+// fetch schemas + all object lists
+export async function listSchemaDetails(
   url: string,
   key: string,
   showBuiltIn: boolean = false
@@ -19,9 +17,7 @@ export async function listSchemasAndTables(
   return res.json();
 }
 
-/**
- * Fetch generated SQL via our Next.js API.
- */
+// Post selections to generate SQL
 export async function generateMigrationSQL(
   url: string,
   key: string,
@@ -35,7 +31,7 @@ export async function generateMigrationSQL(
     headers: {
       "Content-Type": "application/json",
       "x-sb-url": url,
-      "x-sb-key": key
+      "x-sb-key": key,
     },
     body: JSON.stringify({ selections, functionSelections, typeSelections, triggerSelections })
   });

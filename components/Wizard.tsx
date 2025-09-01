@@ -22,13 +22,14 @@ export default function Wizard() {
 
   return (
     <Box>
-      <Stepper activeStep={active} alternativeLabel>
+      <Stepper activeStep={activeStep} alternativeLabel>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
+
       <Box className="mt-8">
         {active === 0 && <Step1Credentials onNext={() => {
           // Reset all selections when moving to step 2
