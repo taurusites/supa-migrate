@@ -106,79 +106,105 @@ CREATE OR REPLACE FUNCTION public.pg_list_foreign_keys()
     GROUP BY nsp.nspname,c.conname,rel.relname,fnsp.nspname,frel.relname;
   $$ LANGUAGE sql STABLE;
 
-  -- 8) List all user functions
-DROP FUNCTION IF EXISTS public.pg_list_functions();
-CREATE OR REPLACE FUNCTION public.pg_list_functions()
-  RETURNS TABLE(function_schema text, function_name text) AS $$
-    SELECT n.nspname AS function_schema,
-           p.proname AS function_name
+-- 8) user-defined functions
+DROP FUNCTION IF EXISTS public.pg_list_functions(text);
+CREATE OR REPLACE FUNCTION public.pg_list_functions(schemaname text)
+  RETURNS TABLE(function_name text) AS $$
+    SELECT p.proname
     FROM pg_proc p
-    JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
-      AND p.prokind = 'f';
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = schemaname
+      AND p.prokind = 'f'  -- 'f' = function, 'a' = aggregate, 'p' = procedure, 'w' = window
+      AND p.proname NOT LIKE 'pg_%'
+      AND p.proname NOT IN (
+        'pg_list_schemas', 'pg_list_tables', 'pg_get_tabledef', 
+        'pg_list_enum_types', 'pg_list_constraints', 'pg_list_indexes',
+        'pg_list_foreign_keys', 'pg_list_functions', 'pg_list_user_types',
+        'pg_list_triggers', 'pg_get_function_def', 'pg_get_trigger_def',
+        'pg_get_type_def'
+      )  -- exclude our own migration functions
+    ORDER BY p.proname;
   $$ LANGUAGE sql STABLE;
 
--- 9) Get function definition
-DROP FUNCTION IF EXISTS public.pg_get_functiondef(text,text);
-CREATE OR REPLACE FUNCTION public.pg_get_functiondef(
-  function_schema text,
-  function_name   text
-)
-  RETURNS TABLE(def text) AS $$
-    SELECT pg_get_functiondef(p.oid) AS def
+-- 9) user-defined types (excluding enums which are handled separately)
+DROP FUNCTION IF EXISTS public.pg_list_user_types(text);
+CREATE OR REPLACE FUNCTION public.pg_list_user_types(schemaname text)
+  RETURNS TABLE(type_name text) AS $$
+    SELECT t.typname
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = schemaname
+      AND t.typtype IN ('c', 'd')  -- composite and domain types
+      AND t.typname NOT LIKE 'pg_%'
+      AND t.typname NOT LIKE '_%'  -- exclude array types
+    ORDER BY t.typname;
+  $$ LANGUAGE sql STABLE;
+
+-- 10) triggers
+DROP FUNCTION IF EXISTS public.pg_list_triggers(text);
+CREATE OR REPLACE FUNCTION public.pg_list_triggers(schemaname text)
+  RETURNS TABLE(trigger_name text, table_name text) AS $$
+    SELECT t.tgname, c.relname
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = schemaname
+      AND NOT t.tgisinternal  -- exclude internal triggers
+      AND t.tgname NOT LIKE 'RI_%'  -- exclude foreign key triggers
+    ORDER BY c.relname, t.tgname;
+  $$ LANGUAGE sql STABLE;
+
+-- 11) get function definition
+DROP FUNCTION IF EXISTS public.pg_get_function_def(text, text);
+CREATE OR REPLACE FUNCTION public.pg_get_function_def(schemaname text, functionname text)
+  RETURNS TABLE(definition text) AS $$
+    SELECT pg_get_functiondef(p.oid)
     FROM pg_proc p
-    JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = function_schema
-      AND p.proname = function_name
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = schemaname
+      AND p.proname = functionname
+      AND p.prokind = 'f'
     LIMIT 1;
   $$ LANGUAGE sql STABLE;
 
--- 10) List all triggers
-DROP FUNCTION IF EXISTS public.pg_list_triggers();
-CREATE OR REPLACE FUNCTION public.pg_list_triggers()
-  RETURNS TABLE(
-    trigger_schema           text,
-    table_name               text,
-    trigger_name             text
-  ) AS $$
-    SELECT
-      n.nspname    AS trigger_schema,
-      c.relname    AS table_name,
-      t.tgname     AS trigger_name
+-- 12) get trigger definition
+DROP FUNCTION IF EXISTS public.pg_get_trigger_def(text, text);
+CREATE OR REPLACE FUNCTION public.pg_get_trigger_def(schemaname text, triggername text)
+  RETURNS TABLE(definition text) AS $$
+    SELECT pg_get_triggerdef(t.oid)
     FROM pg_trigger t
-    JOIN pg_class c     ON t.tgrelid = c.oid
-    JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE NOT t.tgisinternal;
-  $$ LANGUAGE sql STABLE;
-
--- 11) Get trigger definition
-DROP FUNCTION IF EXISTS public.pg_get_triggerdef(text,text,text);
-CREATE OR REPLACE FUNCTION public.pg_get_triggerdef(
-  trigger_schema text,
-  table_name     text,
-  trigger_name   text
-)
-  RETURNS TABLE(def text) AS $$
-    SELECT pg_get_triggerdef(t.oid) AS def
-    FROM pg_trigger t
-    JOIN pg_class c     ON t.tgrelid = c.oid
-    JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE n.nspname = trigger_schema
-      AND c.relname = table_name
-      AND t.tgname  = trigger_name
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = schemaname
+      AND t.tgname = triggername
+      AND NOT t.tgisinternal
     LIMIT 1;
   $$ LANGUAGE sql STABLE;
 
-
-  -- NEW: list indexes for one schema via RPC (avoids pg_catalog override)
-DROP FUNCTION IF EXISTS public.pg_list_schema_indexes(text);
-CREATE OR REPLACE FUNCTION public.pg_list_schema_indexes(schemaname text)
-  RETURNS TABLE(
-    tablename text,
-    indexname text,
-    indexdef  text
-  ) AS $$
-    SELECT tablename, indexname, indexdef
-    FROM pg_indexes
-    WHERE schemaname = schemaname;
+-- 13) get user-defined type definition
+DROP FUNCTION IF EXISTS public.pg_get_type_def(text, text);
+CREATE OR REPLACE FUNCTION public.pg_get_type_def(schemaname text, typename text)
+  RETURNS TABLE(definition text) AS $$
+    SELECT 
+      CASE 
+        WHEN t.typtype = 'c' THEN
+          'CREATE TYPE ' || quote_ident(schemaname) || '.' || quote_ident(typename) || ' AS (' ||
+          string_agg(
+            quote_ident(a.attname) || ' ' || format_type(a.atttypid, a.atttypmod),
+            ', ' ORDER BY a.attnum
+          ) || ')'
+        WHEN t.typtype = 'd' THEN
+          'CREATE DOMAIN ' || quote_ident(schemaname) || '.' || quote_ident(typename) || ' AS ' ||
+          format_type(t.typbasetype, t.typtypmod) ||
+          CASE WHEN t.typnotnull THEN ' NOT NULL' ELSE '' END
+        ELSE
+          '-- Unsupported type: ' || typename
+      END as definition
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    LEFT JOIN pg_attribute a ON a.attrelid = t.typrelid AND a.attnum > 0 AND NOT a.attisdropped
+    WHERE n.nspname = schemaname
+      AND t.typname = typename
+      AND t.typtype IN ('c', 'd')
+    GROUP BY t.typtype, schemaname, typename, t.typbasetype, t.typtypmod, t.typnotnull;
   $$ LANGUAGE sql STABLE;
