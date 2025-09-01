@@ -5,10 +5,15 @@ import { SchemaInfo, TableSelection, FunctionSelection, TypeSelection, TriggerSe
  */
 export async function listSchemasAndTables(
   url: string,
-  key: string
+  key: string,
+  showBuiltIn: boolean = false
 ): Promise<SchemaInfo[]> {
   const res = await fetch("/api/list-schemas-tables", {
-    headers: { "x-sb-url": url, "x-sb-key": key }
+    headers: { 
+      "x-sb-url": url, 
+      "x-sb-key": key,
+      "x-show-builtin": showBuiltIn.toString()
+    }
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

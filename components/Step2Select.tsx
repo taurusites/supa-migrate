@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Checkbox, FormControlLabel, Alert } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, Alert, Switch, Typography } from "@mui/material";
 import Loading from "./Loading";
 import { useSupabaseCredentials } from "../context/SupabaseContext";
 import { listSchemasAndTables } from "../services/supabaseService";
@@ -18,12 +18,13 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
   const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showBuiltInSchemas, setShowBuiltInSchemas] = useState(false);
 
   useEffect(() => {
     if (!credentials) return;
     setLoading(true);
     setError(null);
-    listSchemasAndTables(credentials.url, credentials.key)
+    listSchemasAndTables(credentials.url, credentials.key, showBuiltInSchemas)
       .then((data) => {
         setSchemas(data);
         onSchemasLoaded?.(data);
@@ -38,7 +39,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [credentials]);
+  }, [credentials, showBuiltInSchemas]);
 
   if (!credentials) return <Alert severity="error">Missing credentials</Alert>;
   if (loading) return <Loading />;
@@ -62,39 +63,61 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
 
   return (
     <Box className="space-y-6">
+      <Box className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <Typography variant="body2" color="textSecondary">
+          By default, built-in Supabase schemas (auth, storage, etc.) are hidden as they're typically not migrated.
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showBuiltInSchemas}
+              onChange={(e) => setShowBuiltInSchemas(e.target.checked)}
+            />
+          }
+          label="Show built-in schemas"
+        />
+      </Box>
       {schemas.map((s) => {
         const schemaTables = selection.filter(sel => sel.schema === s.schema);
         return (
           <Box key={s.schema} className="border rounded-lg p-4">
             <Box className="flex items-center justify-between mb-2">
               <h3 className="font-semibold">{s.schema}</h3>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={schemaTables.every(t => t.selected)}
-                    indeterminate={schemaTables.some(t => t.selected) && !schemaTables.every(t => t.selected)}
-                    onChange={(e) => toggleAllTables(s.schema, e.target.checked)}
-                  />
-                }
-                label="Select All"
-              />
+              {schemaTables.length > 0 && (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={schemaTables.length > 0 && schemaTables.every(t => t.selected)}
+                      indeterminate={schemaTables.some(t => t.selected) && !schemaTables.every(t => t.selected)}
+                      onChange={(e) => toggleAllTables(s.schema, e.target.checked)}
+                    />
+                  }
+                  label="Select All"
+                />
+              )}
             </Box>
             <Box className="grid grid-cols-2 gap-2">
-              {s.tables.map((t) => {
-                const sel = selection.find((x) => x.schema === s.schema && x.table === t);
-                return (
-                  <FormControlLabel
-                    key={`${s.schema}.${t}`}
-                    control={
-                      <Checkbox
-                        checked={sel?.selected || false}
-                        onChange={() => toggle(s.schema, t)}
-                      />
-                    }
-                    label={t}
-                  />
-                );
-              })}
+              {s.tables.length > 0 ? (
+                s.tables.map((t) => {
+                  const sel = selection.find((x) => x.schema === s.schema && x.table === t);
+                  return (
+                    <FormControlLabel
+                      key={`${s.schema}.${t}`}
+                      control={
+                        <Checkbox
+                          checked={sel?.selected || false}
+                          onChange={() => toggle(s.schema, t)}
+                        />
+                      }
+                      label={t}
+                    />
+                  );
+                })
+              ) : (
+                <Typography variant="body2" color="textSecondary" className="col-span-2">
+                  No tables found in this schema
+                </Typography>
+              )}
             </Box>
           </Box>
         );

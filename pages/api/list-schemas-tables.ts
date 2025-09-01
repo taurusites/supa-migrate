@@ -9,6 +9,7 @@ export default async function handler(
   try {
     const url = req.headers["x-sb-url"] as string;
     const key = req.headers["x-sb-key"] as string;
+    const showBuiltIn = req.headers["x-show-builtin"] === "true";
     if (!url || !key) throw new Error("Missing Supabase URL/key headers");
 
     const supa = createClient(url, key, {
@@ -27,7 +28,7 @@ export default async function handler(
       'pgsodium_masks', 'realtime', 'storage', 'supabase_functions', 
       'supabase_migrations', 'vault'
     ];
-    const schemas = allSchemas.filter(schema => !builtInSchemas.includes(schema));
+    const schemas = showBuiltIn ? allSchemas : allSchemas.filter(schema => !builtInSchemas.includes(schema));
     
     console.log('All schemas found:', allSchemas);
     console.log('Filtered schemas:', schemas);
