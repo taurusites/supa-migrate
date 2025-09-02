@@ -3,20 +3,11 @@ import { Box, Button, Checkbox, FormControlLabel, Alert, Switch, Typography } fr
 import Loading from "./Loading";
 import { useSupabaseCredentials } from "../context/SupabaseContext";
 import { listSchemaDetails } from "../services/supabaseService";
-import { SchemaDetail, Selection } from "../types";
+import { SchemaInfo, TableSelection } from "../types";
 
-const LABELS: Record<string, string> = {
-  table:      "Tables",
-  enum:       "Enums",
-  function:   "Functions",
-  trigger:    "Triggers",
-  index:      "Indexes",
-  foreignKey: "Foreign Keys",
-};
-
-interface Step2SelectProps {
-  selections: Selection[];
-  setSelections: (s: Selection[]) => void;
+interface Props {
+  selection: TableSelection[];
+  setSelection: (s: TableSelection[]) => void;
   onNext: () => void;
   onBack: () => void;
   onSchemasLoaded?: (schemas: SchemaInfo[]) => void;
@@ -24,7 +15,7 @@ interface Step2SelectProps {
 
 export default function Step2Select({ selection, setSelection, onNext, onBack, onSchemasLoaded }: Props) {
   const { credentials } = useSupabaseCredentials();
-  const [details, setDetails] = useState<SchemaDetail[]>([]);
+  const [schemas, setSchemas] = useState<SchemaInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBuiltInSchemas, setShowBuiltInSchemas] = useState(true);
@@ -33,7 +24,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
     if (!credentials) return;
     setLoading(true);
     setError(null);
-    listSchemasAndTables(credentials.url, credentials.key, showBuiltInSchemas)
+    listSchemaDetails(credentials.url, credentials.key, showBuiltInSchemas)
       .then((data) => {
         setSchemas(data);
         onSchemasLoaded?.(data);
@@ -136,7 +127,7 @@ export default function Step2Select({ selection, setSelection, onNext, onBack, o
         <Button
           variant="contained"
           onClick={onNext}
-          disabled={!tablesSelected.some((s) => s.selected)}
+          disabled={!selection.some((s) => s.selected)}
         >
           Next
         </Button>

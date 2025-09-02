@@ -1,7 +1,9 @@
 import { SchemaInfo, TableSelection, FunctionSelection, TypeSelection, TriggerSelection } from "../types";
 
-// fetch schemas + all object lists
-export async function listSchemaDetails(
+/**
+ * Fetch schemas & tables via our Next.js API.
+ */
+export async function listSchemasAndTables(
   url: string,
   key: string,
   showBuiltIn: boolean = false
@@ -16,6 +18,9 @@ export async function listSchemaDetails(
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+// Alias for backward compatibility
+export const listSchemaDetails = listSchemasAndTables;
 
 // Post selections to generate SQL
 export async function generateMigrationSQL(
