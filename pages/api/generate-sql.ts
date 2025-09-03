@@ -2,7 +2,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { generateMigrationSQL } from "../../services/sql-generator";
-import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection } from "../../types";
+import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection, PolicySelection } from "../../types";
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,11 +14,12 @@ export default async function handler(
     const key = req.headers["x-sb-key"] as string;
 
     // Parse request body
-    const { selections, functionSelections, typeSelections, triggerSelections } = req.body as {
+    const { selections, functionSelections, typeSelections, triggerSelections, policySelections } = req.body as {
       selections: TableSelection[];
       functionSelections?: FunctionSelection[];
       typeSelections?: TypeSelection[];
       triggerSelections?: TriggerSelection[];
+      policySelections?: PolicySelection[];
     };
 
     // Generate SQL using the modular generator
@@ -29,6 +30,7 @@ export default async function handler(
       functionSelections,
       typeSelections,
       triggerSelections,
+      policySelections,
       options: {
         includeData: true,
         dropAndRecreate: true

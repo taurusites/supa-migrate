@@ -36,7 +36,7 @@ export const generateDependencyTables = async (context: GeneratorContext): Promi
   const { rpc, picked, pickedFunctions, pickedTypes, pickedTriggers } = context;
   let sql = "";
 
-  // Get all tables from schemas that have selected content (tables, functions, types, triggers)
+  // Get all tables from schemas that have selected content (tables, functions, types, triggers, policies)
   const allRelevantSchemas = new Set<string>();
 
   // Add schemas from all selected content
@@ -44,6 +44,9 @@ export const generateDependencyTables = async (context: GeneratorContext): Promi
   pickedFunctions.forEach(({ schema }) => allRelevantSchemas.add(schema));
   pickedTypes.forEach(({ schema }) => allRelevantSchemas.add(schema));
   pickedTriggers.forEach(({ schema }) => allRelevantSchemas.add(schema));
+  if (context.pickedPolicies) {
+    context.pickedPolicies.forEach(({ schema }) => allRelevantSchemas.add(schema));
+  }
 
   const allSchemaTables = new Set<string>();
 

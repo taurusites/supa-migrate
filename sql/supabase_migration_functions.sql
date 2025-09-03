@@ -121,7 +121,7 @@ CREATE OR REPLACE FUNCTION public.pg_list_functions(schemaname text)
         'pg_list_enum_types', 'pg_list_constraints', 'pg_list_indexes',
         'pg_list_foreign_keys', 'pg_list_functions', 'pg_list_user_types',
         'pg_list_triggers', 'pg_get_function_def', 'pg_get_trigger_def',
-        'pg_get_type_def'
+        'pg_get_type_def', 'pg_list_policies', 'pg_get_policy_def'
       )  -- exclude our own migration functions
     ORDER BY p.proname;
   $$ LANGUAGE sql STABLE;
@@ -207,4 +207,53 @@ CREATE OR REPLACE FUNCTION public.pg_get_type_def(schemaname text, typename text
       AND t.typname = typename
       AND t.typtype IN ('c', 'd')
     GROUP BY t.typtype, schemaname, typename, t.typbasetype, t.typtypmod, t.typnotnull;
+  $$ LANGUAGE sql STABLE;
+
+-- 14) list RLS policies
+DROP FUNCTION IF EXISTS public.pg_list_policies(text);
+CREATE OR REPLACE FUNCTION public.pg_list_policies(schemaname text)
+  RETURNS TABLE(policy_name text, table_name text) AS $$
+    SELECT policyname, tablename
+    FROM pg_policies
+    WHERE schemaname = pg_list_policies.schemaname
+    ORDER BY tablename, policyname;
+  $$ LANGUAGE sql STABLE;
+
+-- 15) get RLS policy definition
+DROP FUNCTION IF EXISTS public.pg_get_policy_def(text, text, text);
+CREATE OR REPLACE FUNCTION public.pg_get_policy_def(schemaname text, tablename text, policyname text)
+  RETURNS TABLE(definition text) AS $$
+    SELECT 
+      'CREATE POLICY ' || quote_ident(policyname) || ' ON ' || quote_ident(schemaname) || '.' || quote_ident(tablename) ||
+      CASE 
+        WHEN cmd IS NOT NULL AND cmd != 'ALL' THEN E'\n  FOR ' || cmd
+        ELSE ''
+      END ||
+      CASE 
+        WHEN roles IS NOT NULL AND array_length(roles, 1) > 0 THEN 
+          E'\n  TO ' || array_to_string(
+            ARRAY(
+              SELECT CASE 
+                WHEN role_name = 'public' THEN 'public'
+                ELSE quote_ident(role_name)
+              END
+              FROM unnest(roles) AS role_name
+            ), 
+            ', '
+          )
+        ELSE ''
+      END ||
+      CASE 
+        WHEN qual IS NOT NULL THEN E'\n  USING (' || qual || ')'
+        ELSE ''
+      END ||
+      CASE 
+        WHEN with_check IS NOT NULL AND with_check != qual THEN E'\n  WITH CHECK (' || with_check || ')'
+        ELSE ''
+      END as definition
+    FROM pg_policies
+    WHERE schemaname = pg_get_policy_def.schemaname
+      AND tablename = pg_get_policy_def.tablename
+      AND policyname = pg_get_policy_def.policyname
+    LIMIT 1;
   $$ LANGUAGE sql STABLE;

@@ -19,6 +19,7 @@ A modular SQL migration generator for Supabase databases. This service breaks do
 - **`functions-generator.ts`** - Processes user-defined functions
 - **`triggers-generator.ts`** - Manages database triggers
 - **`constraints-generator.ts`** - Handles constraints, indexes, and foreign keys
+- **`policies-generator.ts`** - Manages RLS (Row Level Security) policies
 
 ## Usage
 
@@ -32,6 +33,7 @@ const sql = await generateMigrationSQL({
   functionSelections: [/* function selections */],
   typeSelections: [/* type selections */],
   triggerSelections: [/* trigger selections */],
+  policySelections: [/* policy selections */],
   options: {
     includeData: true,
     dropAndRecreate: true
@@ -49,9 +51,9 @@ const sql = await generateMigrationSQL({
 
 ### Dependency Resolution
 - Auto-detects and creates all tables from relevant schemas
-- Ensures proper ordering: types → tables → data → functions → triggers → constraints
+- Ensures proper ordering: types → tables → data → functions → triggers → constraints → policies
 - Creates placeholder auth tables when needed for function compatibility
-- Includes warnings for functions that reference auth tables
+- Includes warnings for functions and policies that reference auth tables/functions
 
 ### Modular Design
 - Each generator is focused on a specific database object type
@@ -68,6 +70,7 @@ const sql = await generateMigrationSQL({
 6. **Triggers** - Database triggers
 7. **Constraints** - Table constraints and indexes
 8. **Foreign Keys** - Cross-table relationships
+9. **RLS Policies** - Row Level Security policies (enables RLS on tables)
 
 ## Error Handling
 
@@ -83,3 +86,28 @@ To add new database object types:
 2. Add the generator to the main orchestrator in `index.ts`
 3. Update types and interfaces as needed
 4. Follow the established patterns for error handling and SQL generation
+
+## RLS Policy Support
+
+The generator now includes comprehensive Row Level Security (RLS) policy support:
+
+### Features
+- **Auto-enables RLS** on tables with policies
+- **Drop and recreate** policies with proper dependency handling
+- **Auth function warnings** for policies using `auth.uid()`, `auth.jwt()`, etc.
+- **Proper ordering** - policies are created after all tables and functions
+
+### Generated SQL Example
+```sql
+-- Enable RLS on public.posts
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+
+-- Drop and recreate policy user_posts_policy on public.posts
+DROP POLICY IF EXISTS user_posts_policy ON public.posts;
+-- WARNING: Policy user_posts_policy references auth functions
+-- You may need to modify this policy for your target database
+-- Consider updating references to auth.uid(), auth.jwt(), or auth.role()
+CREATE POLICY user_posts_policy ON public.posts
+  FOR ALL TO authenticated
+  USING (auth.uid() = user_id);
+```

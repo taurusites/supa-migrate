@@ -1,7 +1,7 @@
 // services/sql-generator/index.ts
 
 import { createClient } from "@supabase/supabase-js";
-import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection } from "../../types";
+import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection, PolicySelection } from "../../types";
 import { GeneratorContext, GeneratorOptions } from "./types";
 import { generateHeader, generateCleanupHeader, generateRecreationHeader } from "./utils";
 import { generateCleanupSQL } from "./cleanup";
@@ -11,6 +11,7 @@ import { generateTableData } from "./data-generator";
 import { generateFunctions } from "./functions-generator";
 import { generateTriggers } from "./triggers-generator";
 import { generateConstraints, generateIndexes, generateForeignKeys } from "./constraints-generator";
+import { generatePolicies } from "./policies-generator";
 
 export interface SQLGeneratorInput {
   url: string;
@@ -19,6 +20,7 @@ export interface SQLGeneratorInput {
   functionSelections?: FunctionSelection[];
   typeSelections?: TypeSelection[];
   triggerSelections?: TriggerSelection[];
+  policySelections?: PolicySelection[];
   options?: GeneratorOptions;
 }
 
@@ -33,6 +35,7 @@ export const generateMigrationSQL = async (input: SQLGeneratorInput): Promise<st
     functionSelections = [],
     typeSelections = [],
     triggerSelections = [],
+    policySelections = [],
     options = { includeData: true, dropAndRecreate: true }
   } = input;
 
@@ -44,9 +47,10 @@ export const generateMigrationSQL = async (input: SQLGeneratorInput): Promise<st
   const pickedFunctions = functionSelections.filter((s) => s.selected);
   const pickedTypes = typeSelections.filter((s) => s.selected);
   const pickedTriggers = triggerSelections.filter((s) => s.selected);
+  const pickedPolicies = policySelections.filter((s) => s.selected);
 
-  if (!picked.length && !pickedFunctions.length && !pickedTypes.length && !pickedTriggers.length) {
-    throw new Error("No tables, functions, types, or triggers selected");
+  if (!picked.length && !pickedFunctions.length && !pickedTypes.length && !pickedTriggers.length && !pickedPolicies.length) {
+    throw new Error("No tables, functions, types, triggers, or policies selected");
   }
 
   // Create RPC client
@@ -61,6 +65,7 @@ export const generateMigrationSQL = async (input: SQLGeneratorInput): Promise<st
     pickedFunctions,
     pickedTypes,
     pickedTriggers,
+    pickedPolicies,
     tableSet: new Set(picked.map((s) => `${s.schema}.${s.table}`)),
     schemaSet: new Set(picked.map((s) => s.schema))
   };
@@ -88,6 +93,7 @@ export const generateMigrationSQL = async (input: SQLGeneratorInput): Promise<st
   pickedFunctions.forEach(({ schema }) => allRelevantSchemas.add(schema));
   pickedTypes.forEach(({ schema }) => allRelevantSchemas.add(schema));
   pickedTriggers.forEach(({ schema }) => allRelevantSchemas.add(schema));
+  pickedPolicies.forEach(({ schema }) => allRelevantSchemas.add(schema));
   
   sql += await generateDependencyTables(context);
   sql += generateAuthTables(context, allRelevantSchemas);
@@ -105,6 +111,9 @@ export const generateMigrationSQL = async (input: SQLGeneratorInput): Promise<st
   sql += await generateConstraints(context);
   sql += await generateIndexes(context);
   sql += await generateForeignKeys(context);
+
+  // RLS Policies (after all tables and functions are created)
+  sql += await generatePolicies(context);
 
   return sql;
 };

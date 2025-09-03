@@ -63,7 +63,16 @@ export default async function handler(
         table_name: r.table_name as string 
       })) || [];
 
-      out.push({ schema, tables, functions, types, triggers });
+      // Get RLS policies
+      const listPolicies = await supa.rpc("pg_list_policies", { schemaname: schema });
+      if (listPolicies.error) throw listPolicies.error;
+      const policyRows = listPolicies.data as any[] | null;
+      const policies = policyRows?.map((r) => ({ 
+        policy_name: r.policy_name as string, 
+        table_name: r.table_name as string 
+      })) || [];
+
+      out.push({ schema, tables, functions, types, triggers, policies });
     }
 
     return res.status(200).json(out);

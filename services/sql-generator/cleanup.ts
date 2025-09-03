@@ -6,10 +6,19 @@ import { GeneratorContext } from "./types";
  * Generate DROP statements for all selected objects
  */
 export const generateCleanupSQL = (context: GeneratorContext): string => {
-  const { pickedTriggers, pickedFunctions, picked, pickedTypes } = context;
+  const { pickedTriggers, pickedFunctions, picked, pickedTypes, pickedPolicies } = context;
   let sql = "";
 
-  // Drop triggers first (they depend on functions and tables)
+  // Drop policies first (they depend on tables)
+  if (pickedPolicies && pickedPolicies.length) {
+    sql += "-- Drop existing policies\n";
+    for (const { schema, table, policy } of pickedPolicies) {
+      sql += `DROP POLICY IF EXISTS ${policy} ON ${schema}.${table};\n`;
+    }
+    sql += "\n";
+  }
+
+  // Drop triggers (they depend on functions and tables)
   if (pickedTriggers.length) {
     sql += "-- Drop existing triggers\n";
     for (const { schema, trigger, table } of pickedTriggers) {

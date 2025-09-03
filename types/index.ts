@@ -11,6 +11,7 @@ export interface SchemaInfo {
   functions: string[];
   types: string[];
   triggers: Array<{ trigger_name: string; table_name: string; }>;
+  policies: Array<{ policy_name: string; table_name: string; }>;
 }
 
 export interface TableSelection {
@@ -35,5 +36,12 @@ export interface TriggerSelection {
   schema: string;
   trigger: string;
   table: string;
+  selected: boolean;
+}
+
+export interface PolicySelection {
+  schema: string;
+  table: string;
+  policy: string;
   selected: boolean;
 }
