@@ -1,7 +1,7 @@
 // services/sql-generator/types.ts
 
 import { SupabaseClient } from "@supabase/supabase-js";
-import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection } from "../../types";
+import { TableSelection, FunctionSelection, TypeSelection, TriggerSelection, PolicySelection } from "../../types";
 
 export interface GeneratorContext {
   rpc: SupabaseClient;
@@ -11,6 +11,7 @@ export interface GeneratorContext {
   pickedFunctions: FunctionSelection[];
   pickedTypes: TypeSelection[];
   pickedTriggers: TriggerSelection[];
+  pickedPolicies?: PolicySelection[];
   tableSet: Set<string>;
   schemaSet: Set<string>;
 }
